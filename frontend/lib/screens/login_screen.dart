@@ -107,60 +107,72 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Card(
-              elevation: 4,
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Iniciar sesión', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: _usuarioController,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Usuario',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person_outline),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: _ocultarPassword,
-                      onSubmitted: (_) => _ingresar(),
-                      decoration: InputDecoration(
-                        labelText: 'Contraseña',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          onPressed: () {
-                            setState(() {
-                              _ocultarPassword = !_ocultarPassword;
-                            });
-                          },
-                          icon: Icon(_ocultarPassword ? Icons.visibility : Icons.visibility_off),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFFFFDF5), // amarillo muy pálido (cercano a blanco)
+              Color(0xFFFFF7F0), // naranja muy pálido (cercano a blanco)
+            ],
+          ),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Card(
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Iniciar sesión', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: _usuarioController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Usuario',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.person_outline),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 18),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _procesando ? null : _ingresar,
-                        child: Text(
-                          _procesando ? 'Validando...' : 'Ingresar',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: _ocultarPassword,
+                        onSubmitted: (_) => _ingresar(),
+                        decoration: InputDecoration(
+                          labelText: 'Contraseña',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _ocultarPassword = !_ocultarPassword;
+                              });
+                            },
+                            icon: Icon(_ocultarPassword ? Icons.visibility : Icons.visibility_off),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _procesando ? null : _ingresar,
+                          child: Text(
+                            _procesando ? 'Validando...' : 'Ingresar',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

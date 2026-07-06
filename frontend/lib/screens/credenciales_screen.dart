@@ -5,7 +5,9 @@ import 'package:credenciales_web/classes/credencial.dart';
 import 'package:credenciales_web/screens/credencial_editar_screen.dart';
 
 class CredencialesScreen extends StatefulWidget {
-  const CredencialesScreen({super.key});
+  final int rolId;
+
+  const CredencialesScreen({super.key, this.rolId = 0});
 
   @override
   State<CredencialesScreen> createState() => _CredencialesScreenState();
@@ -14,19 +16,9 @@ class CredencialesScreen extends StatefulWidget {
 class _CredencialesScreenState extends State<CredencialesScreen> {
   bool _loading = false;
   List<CredencialesConsulta> _credenciales = [];
-
-  int? _filtroCredencialId;
-  String? _filtroRenspa;
-  String? _filtroSenialDescripcion;
-  String? _filtroExpediente;
-  String? _filtroOficinaCargaCodigo;
-  int? _filtroOficinaTransaccion;
-  int? _filtroTitularNumeroDocumento;
-  int? _filtroEstablecimientoCuit;
-  String? _filtroTitularDescripcion;
-  String? _filtroTitularTelefono;
-  String? _filtroTitularDomicilio;
-  String? _filtroEstablecimientoDescripcion;
+  String? _filtroDescripcion;
+  String? _filtroUsuario;
+  String? _filtroNotas;
 
   @override
   void initState() {
@@ -56,21 +48,15 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
     });
 
     try {
+      // Pedimos al backend la búsqueda por `descripcion`, `usuario` y `notas`.
+      // `notas` se trata como texto normal y el filtrado lo aplica el backend.
       final credenciales = await CredencialesConsulta.lista(
-        credencialId: _filtroCredencialId,
-        renspa: _filtroRenspa,
-        senialDescripcion: _filtroSenialDescripcion,
-        expediente: _filtroExpediente,
-        oficinaCargaCodigo: _filtroOficinaCargaCodigo,
-        oficinaTransaccion: _filtroOficinaTransaccion,
-        titularNumeroDocumento: _filtroTitularNumeroDocumento,
-        establecimientoCuit: _filtroEstablecimientoCuit,
-        titularDescripcion: _filtroTitularDescripcion,
-        titularTelefono: _filtroTitularTelefono,
-        titularDomicilio: _filtroTitularDomicilio,
-        establecimientoDescripcion: _filtroEstablecimientoDescripcion,
+        descripcion: _filtroDescripcion,
+        usuario: _filtroUsuario,
+        notas: _filtroNotas,
       );
       if (!mounted) return;
+
       setState(() {
         _credenciales = credenciales;
       });
@@ -88,28 +74,10 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
 
   int get _cantidadFiltrosActivos {
     var count = 0;
-    final values = [
-      _filtroCredencialId,
-      _filtroRenspa,
-      _filtroSenialDescripcion,
-      _filtroExpediente,
-      _filtroOficinaCargaCodigo,
-      _filtroOficinaTransaccion,
-      _filtroTitularNumeroDocumento,
-      _filtroEstablecimientoCuit,
-      _filtroTitularDescripcion,
-      _filtroTitularTelefono,
-      _filtroTitularDomicilio,
-      _filtroEstablecimientoDescripcion,
-    ];
-
+    final values = [_filtroDescripcion, _filtroUsuario, _filtroNotas];
     for (final value in values) {
-      if (value == null) {
-        continue;
-      }
-      if (value is String && value.trim().isEmpty) {
-        continue;
-      }
+      if (value == null) continue;
+      if (value.trim().isEmpty) continue;
       count++;
     }
     return count;
@@ -127,35 +95,13 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
     return trimmed.isEmpty ? null : trimmed;
   }
 
-  int? _intONull(String text, String nombreCampo) {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) {
-      return null;
-    }
-    final value = int.tryParse(trimmed);
-    if (value == null) {
-      throw FormatException('El campo "$nombreCampo" debe ser numérico.');
-    }
-    return value;
-  }
-
   Future<void> _abrirFiltros() async {
     final filtros = await showDialog<_CredencialesFiltrosResultado?>(
       context: context,
       builder: (context) => _CredencialesFiltrosDialog(
-        credencialId: _filtroCredencialId,
-        renspa: _filtroRenspa,
-        senialDescripcion: _filtroSenialDescripcion,
-        expediente: _filtroExpediente,
-        oficinaCargaCodigo: _filtroOficinaCargaCodigo,
-        oficinaTransaccion: _filtroOficinaTransaccion,
-        titularNumeroDocumento: _filtroTitularNumeroDocumento,
-        establecimientoCuit: _filtroEstablecimientoCuit,
-        titularDescripcion: _filtroTitularDescripcion,
-        titularTelefono: _filtroTitularTelefono,
-        titularDomicilio: _filtroTitularDomicilio,
-        establecimientoDescripcion: _filtroEstablecimientoDescripcion,
-        intONull: _intONull,
+        descripcion: _filtroDescripcion,
+        usuario: _filtroUsuario,
+        notas: _filtroNotas,
         textoONull: _textoONull,
       ),
     );
@@ -166,36 +112,18 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
 
     if (filtros.limpiar) {
       setState(() {
-        _filtroCredencialId = null;
-        _filtroRenspa = null;
-        _filtroSenialDescripcion = null;
-        _filtroExpediente = null;
-        _filtroOficinaCargaCodigo = null;
-        _filtroOficinaTransaccion = null;
-        _filtroTitularNumeroDocumento = null;
-        _filtroEstablecimientoCuit = null;
-        _filtroTitularDescripcion = null;
-        _filtroTitularTelefono = null;
-        _filtroTitularDomicilio = null;
-        _filtroEstablecimientoDescripcion = null;
+        _filtroDescripcion = null;
+        _filtroUsuario = null;
+        _filtroNotas = null;
       });
       await _cargarCredenciales();
       return;
     }
 
     setState(() {
-      _filtroCredencialId = filtros.credencialId;
-      _filtroRenspa = filtros.renspa;
-      _filtroSenialDescripcion = filtros.senialDescripcion;
-      _filtroExpediente = filtros.expediente;
-      _filtroOficinaCargaCodigo = filtros.oficinaCargaCodigo;
-      _filtroOficinaTransaccion = filtros.oficinaTransaccion;
-      _filtroTitularNumeroDocumento = filtros.titularNumeroDocumento;
-      _filtroEstablecimientoCuit = filtros.establecimientoCuit;
-      _filtroTitularDescripcion = filtros.titularDescripcion;
-      _filtroTitularTelefono = filtros.titularTelefono;
-      _filtroTitularDomicilio = filtros.titularDomicilio;
-      _filtroEstablecimientoDescripcion = filtros.establecimientoDescripcion;
+      _filtroDescripcion = filtros.descripcion;
+      _filtroUsuario = filtros.usuario;
+      _filtroNotas = filtros.notas;
     });
     await _cargarCredenciales();
   }
@@ -264,15 +192,73 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
                                             dataRowMaxHeight: isLandscape ? 60 : 52,
                                             headingRowHeight: 42,
                                             columns: const [
-                                              DataColumn(label: Text('Acciones')),
                                               DataColumn(label: Text('Código')),
                                               DataColumn(label: Text('Descripción')),
                                               DataColumn(label: Text('Usuario')),
+                                              DataColumn(label: Text('Password')),
                                               DataColumn(label: Text('Notas')),
+                                              DataColumn(label: Text('Acciones')),
                                             ],
                                             rows: _credenciales.map((credencial) {
                                               return DataRow(
                                                 cells: [
+                                                  DataCell(Text('${credencial.credencialId}')),
+                                                  DataCell(Text(credencial.descripcion ?? '')),
+                                                  DataCell(Text(credencial.usuario ?? '')),
+                                                  DataCell(
+                                                    Builder(
+                                                      builder: (context) {
+                                                        final pwd = credencial.password ?? '';
+                                                        final obscure = ValueNotifier<bool>(true);
+                                                        String masked() =>
+                                                            pwd.isEmpty ? '' : List.filled(pwd.length, '•').join();
+                                                        return ValueListenableBuilder<bool>(
+                                                          valueListenable: obscure,
+                                                          builder: (context, isObscure, _) {
+                                                            return Row(
+                                                              mainAxisSize: MainAxisSize.min,
+                                                              children: [
+                                                                Flexible(child: Text(isObscure ? masked() : pwd)),
+                                                                IconButton(
+                                                                  tooltip: 'Copiar password',
+                                                                  icon: const Icon(Icons.copy, size: 18),
+                                                                  onPressed: () {
+                                                                    if (pwd.isEmpty) {
+                                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                                        const SnackBar(
+                                                                          content: Text('No hay password para copiar'),
+                                                                        ),
+                                                                      );
+                                                                      return;
+                                                                    }
+                                                                    Clipboard.setData(ClipboardData(text: pwd));
+                                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                                      const SnackBar(
+                                                                        content: Text(
+                                                                          'Password copiado al portapapeles',
+                                                                        ),
+                                                                      ),
+                                                                    );
+                                                                  },
+                                                                ),
+                                                                IconButton(
+                                                                  tooltip: isObscure
+                                                                      ? 'Mostrar password'
+                                                                      : 'Ocultar password',
+                                                                  icon: Icon(
+                                                                    isObscure ? Icons.visibility : Icons.visibility_off,
+                                                                    size: 18,
+                                                                  ),
+                                                                  onPressed: () => obscure.value = !obscure.value,
+                                                                ),
+                                                              ],
+                                                            );
+                                                          },
+                                                        );
+                                                      },
+                                                    ),
+                                                  ),
+                                                  DataCell(Text(credencial.notas ?? '')),
                                                   DataCell(
                                                     Row(
                                                       mainAxisSize: MainAxisSize.min,
@@ -293,55 +279,52 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
                                                             }
                                                           },
                                                         ),
-                                                        IconButton(
-                                                          tooltip: 'Eliminar',
-                                                          icon: const Icon(Icons.delete, color: Colors.redAccent),
-                                                          onPressed: () async {
-                                                            final confirmed = await _confirmDelete(
-                                                              context,
-                                                              credencial.credencialId,
-                                                            );
-                                                            if (!confirmed) return;
-                                                            if (!mounted) return;
-                                                            setState(() {
-                                                              _loading = true;
-                                                            });
-                                                            try {
-                                                              await Credencial.eliminar(credencial.credencialId!);
-                                                              if (!mounted) return;
-                                                              // ignore: use_build_context_synchronously
-                                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                                SnackBar(
-                                                                  content: Text(
-                                                                    'Credencial ${credencial.credencialId} eliminado',
-                                                                  ),
-                                                                ),
+                                                        if (widget.rolId == 1)
+                                                          IconButton(
+                                                            tooltip: 'Eliminar',
+                                                            icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                                            onPressed: () async {
+                                                              final confirmed = await _confirmDelete(
+                                                                context,
+                                                                credencial.credencialId,
                                                               );
-                                                              await _cargarCredenciales();
-                                                            } catch (e) {
-                                                              if (!mounted) return;
-                                                              // ignore: use_build_context_synchronously
-                                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                                SnackBar(
-                                                                  content: Text('Error al eliminar credencial: $e'),
-                                                                ),
-                                                              );
-                                                            } finally {
-                                                              // ignore: control_flow_in_finally
+                                                              if (!confirmed) return;
                                                               if (!mounted) return;
                                                               setState(() {
-                                                                _loading = false;
+                                                                _loading = true;
                                                               });
-                                                            }
-                                                          },
-                                                        ),
+                                                              try {
+                                                                await Credencial.eliminar(credencial.credencialId!);
+                                                                if (!mounted) return;
+                                                                // ignore: use_build_context_synchronously
+                                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                                  SnackBar(
+                                                                    content: Text(
+                                                                      'Credencial ${credencial.credencialId} eliminado',
+                                                                    ),
+                                                                  ),
+                                                                );
+                                                                await _cargarCredenciales();
+                                                              } catch (e) {
+                                                                if (!mounted) return;
+                                                                // ignore: use_build_context_synchronously
+                                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                                  SnackBar(
+                                                                    content: Text('Error al eliminar credencial: $e'),
+                                                                  ),
+                                                                );
+                                                              } finally {
+                                                                // ignore: control_flow_in_finally
+                                                                if (!mounted) return;
+                                                                setState(() {
+                                                                  _loading = false;
+                                                                });
+                                                              }
+                                                            },
+                                                          ),
                                                       ],
                                                     ),
                                                   ),
-                                                  DataCell(Text('${credencial.credencialId}')),
-                                                  DataCell(Text(credencial.descripcion ?? '')),
-                                                  DataCell(Text(credencial.usuario ?? '')),
-                                                  DataCell(Text(credencial.notas ?? '')),
                                                 ],
                                               );
                                             }).toList(),
@@ -377,67 +360,24 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
 
 class _CredencialesFiltrosResultado {
   final bool limpiar;
-  final int? credencialId;
-  final String? renspa;
-  final String? senialDescripcion;
-  final String? expediente;
-  final String? oficinaCargaCodigo;
-  final int? oficinaTransaccion;
-  final int? titularNumeroDocumento;
-  final int? establecimientoCuit;
-  final String? titularDescripcion;
-  final String? titularTelefono;
-  final String? titularDomicilio;
-  final String? establecimientoDescripcion;
+  final String? descripcion;
+  final String? usuario;
+  final String? notas;
 
-  const _CredencialesFiltrosResultado({
-    this.limpiar = false,
-    this.credencialId,
-    this.renspa,
-    this.senialDescripcion,
-    this.expediente,
-    this.oficinaCargaCodigo,
-    this.oficinaTransaccion,
-    this.titularNumeroDocumento,
-    this.establecimientoCuit,
-    this.titularDescripcion,
-    this.titularTelefono,
-    this.titularDomicilio,
-    this.establecimientoDescripcion,
-  });
+  const _CredencialesFiltrosResultado({this.limpiar = false, this.descripcion, this.usuario, this.notas});
 }
 
 class _CredencialesFiltrosDialog extends StatefulWidget {
   const _CredencialesFiltrosDialog({
-    required this.credencialId,
-    required this.renspa,
-    required this.senialDescripcion,
-    required this.expediente,
-    required this.oficinaCargaCodigo,
-    required this.oficinaTransaccion,
-    required this.titularNumeroDocumento,
-    required this.establecimientoCuit,
-    required this.titularDescripcion,
-    required this.titularTelefono,
-    required this.titularDomicilio,
-    required this.establecimientoDescripcion,
-    required this.intONull,
+    required this.descripcion,
+    required this.usuario,
+    required this.notas,
     required this.textoONull,
   });
 
-  final int? credencialId;
-  final String? renspa;
-  final String? senialDescripcion;
-  final String? expediente;
-  final String? oficinaCargaCodigo;
-  final int? oficinaTransaccion;
-  final int? titularNumeroDocumento;
-  final int? establecimientoCuit;
-  final String? titularDescripcion;
-  final String? titularTelefono;
-  final String? titularDomicilio;
-  final String? establecimientoDescripcion;
-  final int? Function(String text, String nombreCampo) intONull;
+  final String? descripcion;
+  final String? usuario;
+  final String? notas;
   final String? Function(String text) textoONull;
 
   @override
@@ -445,74 +385,34 @@ class _CredencialesFiltrosDialog extends StatefulWidget {
 }
 
 class _CredencialesFiltrosDialogState extends State<_CredencialesFiltrosDialog> {
-  late final TextEditingController credencialIdController;
-  late final TextEditingController renspaController;
-  late final TextEditingController senialDescripcionController;
-  late final TextEditingController expedienteController;
-  late final TextEditingController oficinaCargaCodigoController;
-  late final TextEditingController oficinaTransaccionController;
-  late final TextEditingController titularNumeroDocumentoController;
-  late final TextEditingController establecimientoCuitController;
-  late final TextEditingController titularDescripcionController;
-  late final TextEditingController titularTelefonoController;
-  late final TextEditingController titularDomicilioController;
-  late final TextEditingController establecimientoDescripcionController;
+  late final TextEditingController descripcionController;
+  late final TextEditingController usuarioController;
+  late final TextEditingController notasController;
 
   @override
   void initState() {
     super.initState();
-    credencialIdController = TextEditingController(text: widget.credencialId?.toString() ?? '');
-    renspaController = TextEditingController(text: widget.renspa ?? '');
-    senialDescripcionController = TextEditingController(text: widget.senialDescripcion ?? '');
-    expedienteController = TextEditingController(text: widget.expediente ?? '');
-    oficinaCargaCodigoController = TextEditingController(text: widget.oficinaCargaCodigo ?? '');
-    oficinaTransaccionController = TextEditingController(text: widget.oficinaTransaccion?.toString() ?? '');
-    titularNumeroDocumentoController = TextEditingController(text: widget.titularNumeroDocumento?.toString() ?? '');
-    establecimientoCuitController = TextEditingController(text: widget.establecimientoCuit?.toString() ?? '');
-    titularDescripcionController = TextEditingController(text: widget.titularDescripcion ?? '');
-    titularTelefonoController = TextEditingController(text: widget.titularTelefono ?? '');
-    titularDomicilioController = TextEditingController(text: widget.titularDomicilio ?? '');
-    establecimientoDescripcionController = TextEditingController(text: widget.establecimientoDescripcion ?? '');
+    descripcionController = TextEditingController(text: widget.descripcion ?? '');
+    usuarioController = TextEditingController(text: widget.usuario ?? '');
+    notasController = TextEditingController(text: widget.notas ?? '');
   }
 
   @override
   void dispose() {
-    credencialIdController.dispose();
-    renspaController.dispose();
-    senialDescripcionController.dispose();
-    expedienteController.dispose();
-    oficinaCargaCodigoController.dispose();
-    oficinaTransaccionController.dispose();
-    titularNumeroDocumentoController.dispose();
-    establecimientoCuitController.dispose();
-    titularDescripcionController.dispose();
-    titularTelefonoController.dispose();
-    titularDomicilioController.dispose();
-    establecimientoDescripcionController.dispose();
+    descripcionController.dispose();
+    usuarioController.dispose();
+    notasController.dispose();
     super.dispose();
   }
 
   void _aplicar() {
-    try {
-      Navigator.of(context).pop(
-        _CredencialesFiltrosResultado(
-          credencialId: widget.intONull(credencialIdController.text, 'Credencial código'),
-          renspa: widget.textoONull(renspaController.text),
-          senialDescripcion: widget.textoONull(senialDescripcionController.text),
-          expediente: widget.textoONull(expedienteController.text),
-          oficinaCargaCodigo: widget.textoONull(oficinaCargaCodigoController.text),
-          oficinaTransaccion: widget.intONull(oficinaTransaccionController.text, 'Oficina transacción'),
-          titularNumeroDocumento: widget.intONull(titularNumeroDocumentoController.text, 'Titular número documento'),
-          establecimientoCuit: widget.intONull(establecimientoCuitController.text, 'CUIT establecimiento'),
-          titularDescripcion: widget.textoONull(titularDescripcionController.text),
-          titularTelefono: widget.textoONull(titularTelefonoController.text),
-          titularDomicilio: widget.textoONull(titularDomicilioController.text),
-          establecimientoDescripcion: widget.textoONull(establecimientoDescripcionController.text),
-        ),
-      );
-    } on FormatException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-    }
+    Navigator.of(context).pop(
+      _CredencialesFiltrosResultado(
+        descripcion: widget.textoONull(descripcionController.text),
+        usuario: widget.textoONull(usuarioController.text),
+        notas: widget.textoONull(notasController.text),
+      ),
+    );
   }
 
   @override
@@ -520,75 +420,25 @@ class _CredencialesFiltrosDialogState extends State<_CredencialesFiltrosDialog> 
     return AlertDialog(
       title: const Text('Filtros de credenciales'),
       content: SizedBox(
-        width: 640,
+        width: 560,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: credencialIdController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
-                decoration: const InputDecoration(labelText: 'Credencial código (exacto)'),
+                controller: descripcionController,
+                inputFormatters: [LengthLimitingTextInputFormatter(100)],
+                decoration: const InputDecoration(labelText: 'Descripción (contiene)'),
               ),
               TextField(
-                controller: renspaController,
-                inputFormatters: [LengthLimitingTextInputFormatter(16)],
-                decoration: const InputDecoration(labelText: 'Renspa (contiene)'),
+                controller: usuarioController,
+                inputFormatters: [LengthLimitingTextInputFormatter(80)],
+                decoration: const InputDecoration(labelText: 'Usuario (contiene)'),
               ),
               TextField(
-                controller: senialDescripcionController,
-                inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                decoration: const InputDecoration(labelText: 'Señal descripción (contiene)'),
-              ),
-              TextField(
-                controller: expedienteController,
-                inputFormatters: [LengthLimitingTextInputFormatter(16)],
-                decoration: const InputDecoration(labelText: 'Expediente (contiene)'),
-              ),
-              TextField(
-                controller: oficinaCargaCodigoController,
-                inputFormatters: [LengthLimitingTextInputFormatter(3)],
-                decoration: const InputDecoration(labelText: 'Oficina carga código (contiene)'),
-              ),
-              TextField(
-                controller: oficinaTransaccionController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
-                decoration: const InputDecoration(labelText: 'Oficina transacción (exacto)'),
-              ),
-              TextField(
-                controller: titularNumeroDocumentoController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
-                decoration: const InputDecoration(labelText: 'Titular Documento (exacto)'),
-              ),
-              TextField(
-                controller: titularDescripcionController,
-                inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                decoration: const InputDecoration(labelText: 'Titular (contiene)'),
-              ),
-              TextField(
-                controller: titularTelefonoController,
-                inputFormatters: [LengthLimitingTextInputFormatter(20)],
-                decoration: const InputDecoration(labelText: 'Titular teléfono (contiene)'),
-              ),
-              TextField(
-                controller: titularDomicilioController,
-                inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                decoration: const InputDecoration(labelText: 'Titular domicilio (contiene)'),
-              ),
-
-              TextField(
-                controller: establecimientoCuitController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(11)],
-                decoration: const InputDecoration(labelText: 'CUIT establecimiento (exacto, max 11)'),
-              ),
-              TextField(
-                controller: establecimientoDescripcionController,
-                inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                decoration: const InputDecoration(labelText: 'Establecimiento (contiene)'),
+                controller: notasController,
+                inputFormatters: [LengthLimitingTextInputFormatter(200)],
+                decoration: const InputDecoration(labelText: 'Notas (contiene)'),
               ),
             ],
           ),

@@ -190,7 +190,7 @@ class _CredencialEditarScreenState extends State<CredencialEditarScreen> {
                   _campo(
                     label: 'Código *',
                     controller: _ctrlCodigo,
-                    readOnly: !_esNuevo,
+                    readOnly: true,
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     validator: (v) {

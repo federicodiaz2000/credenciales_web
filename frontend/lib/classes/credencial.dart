@@ -1,6 +1,5 @@
 import 'package:credenciales_web/db/credencial_access.dart';
 import 'package:credenciales_web/db/database_access.dart';
-// CredencialTitular eliminado: la representación de titulares se delega al backend.
 
 class Credencial {
   int credencialId;
@@ -8,28 +7,8 @@ class Credencial {
   String? usuario;
   String? password;
   String? notas;
-  String? numeroRenspa; // legacy optional
-  String? credencialVencimiento; // legacy optional
-  String? expediente; // legacy optional
-  String? oficinaCargaCodigo; // legacy optional
-  int? oficinaTransaccion; // legacy optional
-  int? establecimientoCuit; // legacy optional
-  String? titularDomicilio; // legacy optional
 
-  Credencial({
-    required this.credencialId,
-    this.descripcion,
-    this.usuario,
-    this.password,
-    this.notas,
-    this.numeroRenspa,
-    this.credencialVencimiento,
-    this.expediente,
-    this.oficinaCargaCodigo,
-    this.oficinaTransaccion,
-    this.establecimientoCuit,
-    this.titularDomicilio,
-  });
+  Credencial({required this.credencialId, this.descripcion, this.usuario, this.password, this.notas});
 
   factory Credencial.fromJson(Map<String, dynamic> json) {
     int parseInt(dynamic value) {
@@ -42,32 +21,12 @@ class Credencial {
       return int.parse(value.toString());
     }
 
-    int? parseNullableInt(dynamic value) {
-      if (value == null) {
-        return null;
-      }
-      if (value is int) {
-        return value;
-      }
-      if (value is num) {
-        return value.toInt();
-      }
-      return int.tryParse(value.toString());
-    }
-
     return Credencial(
-      credencialId: parseInt(json['boleto_codigo'] ?? json['credencial_id']),
-      descripcion: json['descripcion']?.toString() ?? json['senial_descripcion']?.toString(),
-      usuario: json['usuario']?.toString() ?? json['titular_descripcion']?.toString(),
+      credencialId: parseInt(json['credencial_id']),
+      descripcion: json['descripcion']?.toString(),
+      usuario: json['usuario']?.toString(),
       password: json['password']?.toString(),
       notas: json['notas']?.toString() ?? json['observaciones']?.toString(),
-      numeroRenspa: json['numero_renspa']?.toString(),
-      credencialVencimiento: json['boleto_vencimiento']?.toString(),
-      expediente: json['expediente']?.toString(),
-      oficinaCargaCodigo: json['oficina_carga_codigo']?.toString(),
-      oficinaTransaccion: parseNullableInt(json['oficina_transaccion']),
-      establecimientoCuit: parseNullableInt(json['establecimiento_cuit']),
-      titularDomicilio: json['titular_domicilio']?.toString(),
     );
   }
 
@@ -129,6 +88,4 @@ class Credencial {
       notas: notas,
     );
   }
-
-  // Titulares: manejado en backend; las conversiones fueron removidas.
 }

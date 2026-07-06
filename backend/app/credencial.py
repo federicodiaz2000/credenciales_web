@@ -188,7 +188,7 @@ class Credencial:
         where_clauses: list[str] = []
         params: list[Any] = []
 
-        credencial_id = Credencial._to_int(filtros.get("credencial_id") or filtros.get("boleto_codigo"))
+        credencial_id = Credencial._to_int(filtros.get("credencial_id"))
         if credencial_id is not None:
             where_clauses.append("c.credencial_id = %s")
             params.append(credencial_id)

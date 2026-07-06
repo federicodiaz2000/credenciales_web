@@ -20,11 +20,13 @@ class CredencialAccess {
     int? credencialId,
     String? descripcion,
     String? usuario,
+    String? notas,
   }) async {
     final queryParams = <String, String>{
       if (credencialId != null) 'credencial_id': credencialId.toString(),
       if (descripcion != null && descripcion.trim().isNotEmpty) 'descripcion': descripcion.trim(),
       if (usuario != null && usuario.trim().isNotEmpty) 'usuario': usuario.trim(),
+      if (notas != null && notas.isNotEmpty) 'notas': notas,
     };
 
     // Usamos el endpoint `/listaCredencial` que devuelve las filas según `Credencial.lista` en el backend.
