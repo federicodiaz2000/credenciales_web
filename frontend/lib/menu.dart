@@ -165,7 +165,7 @@ class _MenuPrincipalState extends State<MenuPrincipal> with WidgetsBindingObserv
 
               ListTile(
                 leading: Icon(Icons.update),
-                title: Text('Actualizar Credenciales', style: TextStyle(fontSize: 14)),
+                title: Text('Credenciales', style: TextStyle(fontSize: 14)),
                 onTap: () => _seleccionarMenu(drawerContext, MenuPrincipal.menuActualizarCredenciales),
               ),
 
@@ -234,7 +234,7 @@ class _MenuPrincipalState extends State<MenuPrincipal> with WidgetsBindingObserv
         return InicioScreen();
 
       case MenuPrincipal.menuActualizarCredenciales:
-        return CredencialesScreen();
+        return CredencialesScreen(rolId: widget.rolId);
 
       case MenuPrincipal.menuConfiguracion:
         // TODO: Reemplazar con pantalla real de configuración. Por ahora se muestra Inicio

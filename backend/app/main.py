@@ -287,6 +287,7 @@ def listaCredencial(
     credencial_id: Optional[int] = Query(default=None, description="ID de la credencial"),
     descripcion: Optional[str] = Query(default=None, description="Texto para buscar en descripcion"),
     usuario: Optional[str] = Query(default=None, description="Texto para buscar en usuario"),
+    notas: Optional[str] = Query(default=None, description="Texto para buscar en notas"),
     _: None = Depends(require_sesion_activa),
 ) -> dict[str, Any]:
     try:
@@ -295,9 +296,15 @@ def listaCredencial(
                 "credencial_id": credencial_id,
                 "descripcion": descripcion,
                 "usuario": usuario,
+                "notas": notas,
             }
             rows = Credencial.lista(conn, filtros)
             # `Credencial.lista` ya devuelve filas con claves: credencial_id, descripcion, usuario, password, notas, created_at
+            # Serializar tipos no JSON-nativos (por ejemplo datetime) a cadenas.
+            for r in rows:
+                for k, v in list(r.items()):
+                    if hasattr(v, "isoformat"):
+                        r[k] = v.isoformat()
             return {"rows": rows, "count": len(rows)}
     except psycopg.Error as exc:
         raise HTTPException(status_code=400, detail=f"Database error: {exc}") from exc
@@ -335,6 +342,7 @@ def consultaCredenciales(
     credencial_id: Optional[int] = Query(default=None, description="ID de la credencial"),
     descripcion: Optional[str] = Query(default=None, description="Texto para buscar en descripcion"),
     usuario: Optional[str] = Query(default=None, description="Texto para buscar en usuario"),
+    notas: Optional[str] = Query(default=None, description="Texto para buscar en notas"),
 ) -> dict[str, Any]:
     try:
         with get_conn() as conn:
@@ -342,8 +350,13 @@ def consultaCredenciales(
                 "credencial_id": credencial_id,
                 "descripcion": descripcion,
                 "usuario": usuario,
+                "notas": notas,
             }
             rows = Credencial.lista(conn, filtros)
+            for r in rows:
+                for k, v in list(r.items()):
+                    if hasattr(v, "isoformat"):
+                        r[k] = v.isoformat()
             return {"rows": rows, "count": len(rows)}
     except psycopg.Error as exc:
         raise HTTPException(status_code=400, detail=f"Database error: {exc}") from exc
