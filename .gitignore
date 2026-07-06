@@ -1,0 +1,43 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub-cache/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-plugins
+.flutter-plugins-dependencies
+generated_plugin_registrant.dart
+
+# Android
+**/android/.gradle
+**/android/captures/
+**/android/app/build/
+**/android/**/build/
+
+# iOS
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/Runner.xcworkspace/
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/
+*.iml
+
+# macOS
+.DS_Store
+
+# Python virtualenv
+backend/.venv/
+
+# Build outputs
+frontend/build/
+
+# Assets cache
+frontend/.dart_tool/

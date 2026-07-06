@@ -1,0 +1,14 @@
+services:
+  credenciales-api:
+    build: .
+    container_name: credenciales-api
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8081:8000"
+    env_file:
+      - .env
+    environment:
+      - API_KEY=dev-secret-key
+      - DATABASE_URL=${DATABASE_URL}
+      - APP_MODE=${APP_MODE:-release}
