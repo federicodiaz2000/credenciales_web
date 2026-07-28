@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:credenciales_web/classes/credenciales_consulta.dart';
 import 'package:credenciales_web/classes/credencial.dart';
 import 'package:credenciales_web/screens/credencial_editar_screen.dart';
+import 'package:credenciales_web/db/categoria_access.dart';
+import 'package:credenciales_web/db/database_access.dart';
 
 class CredencialesScreen extends StatefulWidget {
   final int rolId;
@@ -19,6 +21,7 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
   String? _filtroDescripcion;
   String? _filtroUsuario;
   String? _filtroNotas;
+  int? _filtroCategoria;
 
   @override
   void initState() {
@@ -50,10 +53,16 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
     try {
       // Pedimos al backend la búsqueda por `descripcion`, `usuario` y `notas`.
       // `notas` se trata como texto normal y el filtrado lo aplica el backend.
+      // Debug: mostrar filtros usados
+      // ignore: avoid_print
+      print(
+        'Cargar credenciales con filtros: descripcion=$_filtroDescripcion usuario=$_filtroUsuario notas=$_filtroNotas categoria=$_filtroCategoria',
+      );
       final credenciales = await CredencialesConsulta.lista(
         descripcion: _filtroDescripcion,
         usuario: _filtroUsuario,
         notas: _filtroNotas,
+        categoriaId: _filtroCategoria,
       );
       if (!mounted) return;
 
@@ -80,6 +89,7 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
       if (value.trim().isEmpty) continue;
       count++;
     }
+    if (_filtroCategoria != null) count++;
     return count;
   }
 
@@ -102,6 +112,7 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
         descripcion: _filtroDescripcion,
         usuario: _filtroUsuario,
         notas: _filtroNotas,
+        categoriaId: _filtroCategoria,
         textoONull: _textoONull,
       ),
     );
@@ -115,6 +126,7 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
         _filtroDescripcion = null;
         _filtroUsuario = null;
         _filtroNotas = null;
+        _filtroCategoria = null;
       });
       await _cargarCredenciales();
       return;
@@ -124,6 +136,7 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
       _filtroDescripcion = filtros.descripcion;
       _filtroUsuario = filtros.usuario;
       _filtroNotas = filtros.notas;
+      _filtroCategoria = filtros.categoriaId;
     });
     await _cargarCredenciales();
   }
@@ -192,8 +205,8 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
                                             dataRowMaxHeight: isLandscape ? 60 : 52,
                                             headingRowHeight: 42,
                                             columns: const [
-                                              DataColumn(label: Text('Código')),
                                               DataColumn(label: Text('Descripción')),
+                                              DataColumn(label: Text('Categoría')),
                                               DataColumn(label: Text('Usuario')),
                                               DataColumn(label: Text('Password')),
                                               DataColumn(label: Text('Notas')),
@@ -202,8 +215,8 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
                                             rows: _credenciales.map((credencial) {
                                               return DataRow(
                                                 cells: [
-                                                  DataCell(Text('${credencial.credencialId}')),
                                                   DataCell(Text(credencial.descripcion ?? '')),
+                                                  DataCell(Text(credencial.categoriaNombre ?? '')),
                                                   DataCell(Text(credencial.usuario ?? '')),
                                                   DataCell(
                                                     Builder(
@@ -363,8 +376,14 @@ class _CredencialesFiltrosResultado {
   final String? descripcion;
   final String? usuario;
   final String? notas;
-
-  const _CredencialesFiltrosResultado({this.limpiar = false, this.descripcion, this.usuario, this.notas});
+  final int? categoriaId;
+  const _CredencialesFiltrosResultado({
+    this.limpiar = false,
+    this.descripcion,
+    this.usuario,
+    this.notas,
+    this.categoriaId,
+  });
 }
 
 class _CredencialesFiltrosDialog extends StatefulWidget {
@@ -372,12 +391,14 @@ class _CredencialesFiltrosDialog extends StatefulWidget {
     required this.descripcion,
     required this.usuario,
     required this.notas,
+    required this.categoriaId,
     required this.textoONull,
   });
 
   final String? descripcion;
   final String? usuario;
   final String? notas;
+  final int? categoriaId;
   final String? Function(String text) textoONull;
 
   @override
@@ -388,6 +409,9 @@ class _CredencialesFiltrosDialogState extends State<_CredencialesFiltrosDialog> 
   late final TextEditingController descripcionController;
   late final TextEditingController usuarioController;
   late final TextEditingController notasController;
+  List<Map<String, dynamic>> _categorias = [];
+  int? _selectedCategoria;
+  bool _categoriasLoaded = false;
 
   @override
   void initState() {
@@ -395,6 +419,8 @@ class _CredencialesFiltrosDialogState extends State<_CredencialesFiltrosDialog> 
     descripcionController = TextEditingController(text: widget.descripcion ?? '');
     usuarioController = TextEditingController(text: widget.usuario ?? '');
     notasController = TextEditingController(text: widget.notas ?? '');
+    _selectedCategoria = widget.categoriaId;
+    _loadCategorias();
   }
 
   @override
@@ -405,12 +431,38 @@ class _CredencialesFiltrosDialogState extends State<_CredencialesFiltrosDialog> 
     super.dispose();
   }
 
+  Future<void> _loadCategorias() async {
+    try {
+      final db = DatabaseAccess();
+      final catAccess = CategoriaAccess(databaseAccess: db);
+      final lista = await catAccess.listaCategoriaApi();
+      if (!mounted) return;
+      setState(() {
+        _categorias = lista;
+        _categoriasLoaded = true;
+      });
+    } catch (_) {
+      // ignorar errores y dejar lista vacía
+      if (!mounted) return;
+      setState(() {
+        _categorias = [];
+        _categoriasLoaded = true;
+      });
+    }
+  }
+
   void _aplicar() {
+    // Debug: mostrar selección antes de cerrar
+    // ignore: avoid_print
+    print(
+      'Filtros: aplicar descripcion=${widget.textoONull(descripcionController.text)} usuario=${widget.textoONull(usuarioController.text)} notas=${widget.textoONull(notasController.text)} categoriaId=$_selectedCategoria',
+    );
     Navigator.of(context).pop(
       _CredencialesFiltrosResultado(
         descripcion: widget.textoONull(descripcionController.text),
         usuario: widget.textoONull(usuarioController.text),
         notas: widget.textoONull(notasController.text),
+        categoriaId: _selectedCategoria,
       ),
     );
   }
@@ -425,6 +477,68 @@ class _CredencialesFiltrosDialogState extends State<_CredencialesFiltrosDialog> 
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Builder(
+                  builder: (context) {
+                    // Construir mapa deduplicado de categorías por id
+                    final Map<int, String> catMap = {};
+                    for (final c in _categorias) {
+                      try {
+                        final id = c['id'] is int ? c['id'] as int : int.parse(c['id'].toString());
+                        final nombre = c['nombre']?.toString() ?? '';
+                        if (!catMap.containsKey(id)) catMap[id] = nombre;
+                      } catch (_) {
+                        // ignorar entradas malformadas
+                      }
+                    }
+
+                    // Si la seleccion actual no existe en el mapa, anularla solo si
+                    // ya cargamos las categorias (evita limpiar prematuramente).
+                    if (_selectedCategoria != null && _categoriasLoaded && !catMap.containsKey(_selectedCategoria)) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) setState(() => _selectedCategoria = null);
+                      });
+                    }
+
+                    final items = <DropdownMenuItem<int?>>[
+                      const DropdownMenuItem<int?>(value: null, child: Text('Todas')),
+                      ...catMap.entries.map((e) => DropdownMenuItem<int?>(value: e.key, child: Text(e.value))),
+                    ];
+
+                    // Debug: imprimir keys/values e item values
+                    // ignore: avoid_print
+                    print(
+                      'DEBUG Dropdown: catKeys=${catMap.keys.toList()} items=${items.map((i) => i.value).toList()} selected=$_selectedCategoria loaded=$_categoriasLoaded',
+                    );
+
+                    // Filtrar duplicados por value para evitar assertion de Dropdown
+                    final seen = <int?>{};
+                    final uniqueItems = <DropdownMenuItem<int?>>[];
+                    for (final it in items) {
+                      final v = it.value;
+                      if (seen.contains(v)) continue;
+                      seen.add(v);
+                      uniqueItems.add(it);
+                    }
+
+                    // Asegurar que el `value` exista entre los items; si no, usar null
+                    final hasSelected = uniqueItems.any((it) => it.value == _selectedCategoria);
+                    final valueForDropdown = (_categoriasLoaded && hasSelected) ? _selectedCategoria : null;
+
+                    return DropdownButtonFormField<int?>(
+                      initialValue: valueForDropdown,
+                      decoration: const InputDecoration(
+                        labelText: 'Categoría',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items: uniqueItems,
+                      onChanged: (v) => setState(() => _selectedCategoria = v),
+                    );
+                  },
+                ),
+              ),
               TextField(
                 controller: descripcionController,
                 inputFormatters: [LengthLimitingTextInputFormatter(100)],

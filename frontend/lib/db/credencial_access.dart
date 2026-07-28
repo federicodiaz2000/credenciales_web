@@ -21,12 +21,14 @@ class CredencialAccess {
     String? descripcion,
     String? usuario,
     String? notas,
+    int? categoriaId,
   }) async {
     final queryParams = <String, String>{
       if (credencialId != null) 'credencial_id': credencialId.toString(),
       if (descripcion != null && descripcion.trim().isNotEmpty) 'descripcion': descripcion.trim(),
       if (usuario != null && usuario.trim().isNotEmpty) 'usuario': usuario.trim(),
       if (notas != null && notas.isNotEmpty) 'notas': notas,
+      if (categoriaId != null) 'categoria_id': categoriaId.toString(),
     };
 
     // Usamos el endpoint `/listaCredencial` que devuelve las filas según `Credencial.lista` en el backend.
@@ -76,6 +78,7 @@ class CredencialAccess {
   Future<void> agregarCredencialApi({
     required int credencialId,
     String? descripcion,
+    int? categoriaId,
     String? usuario,
     String? password,
     String? notas,
@@ -84,6 +87,7 @@ class CredencialAccess {
     final body = jsonEncode({
       'credencial_id': credencialId,
       'descripcion': descripcion,
+      'categoriaId': categoriaId,
       'usuario': usuario,
       'password': password,
       'notas': notas,
@@ -95,12 +99,19 @@ class CredencialAccess {
   Future<void> modificarCredencialApi({
     required int credencialId,
     String? descripcion,
+    int? categoriaId,
     String? usuario,
     String? password,
     String? notas,
   }) async {
     final uri = Uri.parse('$_apiBaseUrl/credenciales/$credencialId');
-    final body = jsonEncode({'descripcion': descripcion, 'usuario': usuario, 'password': password, 'notas': notas});
+    final body = jsonEncode({
+      'descripcion': descripcion,
+      'categoriaId': categoriaId,
+      'usuario': usuario,
+      'password': password,
+      'notas': notas,
+    });
     final response = await http.patch(uri, headers: _headers, body: body);
     _decodeResponse(response);
   }

@@ -7,8 +7,18 @@ class Credencial {
   String? usuario;
   String? password;
   String? notas;
+  int? categoriaId;
+  String? categoriaNombre;
 
-  Credencial({required this.credencialId, this.descripcion, this.usuario, this.password, this.notas});
+  Credencial({
+    required this.credencialId,
+    this.descripcion,
+    this.usuario,
+    this.password,
+    this.notas,
+    this.categoriaId,
+    this.categoriaNombre,
+  });
 
   factory Credencial.fromJson(Map<String, dynamic> json) {
     int parseInt(dynamic value) {
@@ -27,6 +37,8 @@ class Credencial {
       usuario: json['usuario']?.toString(),
       password: json['password']?.toString(),
       notas: json['notas']?.toString() ?? json['observaciones']?.toString(),
+      categoriaId: json['categoria_id'] != null ? int.tryParse(json['categoria_id'].toString()) : null,
+      categoriaNombre: json['categoria_nombre']?.toString(),
     );
   }
 
@@ -56,6 +68,7 @@ class Credencial {
   static Future<void> agregar({
     required int credencialId,
     String? descripcion,
+    int? categoriaId,
     String? usuario,
     String? password,
     String? notas,
@@ -65,6 +78,7 @@ class Credencial {
     await credencialAccess.agregarCredencialApi(
       credencialId: credencialId,
       descripcion: descripcion,
+      categoriaId: categoriaId,
       usuario: usuario,
       password: password,
       notas: notas,
@@ -74,6 +88,7 @@ class Credencial {
   static Future<void> modificar({
     required int credencialId,
     String? descripcion,
+    int? categoriaId,
     String? usuario,
     String? password,
     String? notas,
@@ -83,6 +98,7 @@ class Credencial {
     await credencialAccess.modificarCredencialApi(
       credencialId: credencialId,
       descripcion: descripcion,
+      categoriaId: categoriaId,
       usuario: usuario,
       password: password,
       notas: notas,

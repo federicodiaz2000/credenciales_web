@@ -7,6 +7,7 @@ import 'package:credenciales_web/screens/credenciales_screen.dart';
 import 'package:credenciales_web/screens/acerca_de_screen.dart';
 import 'package:credenciales_web/screens/inicio_screen.dart';
 import 'package:credenciales_web/screens/usuarios_screen.dart';
+import 'package:credenciales_web/screens/categorias_screen.dart';
 
 class MenuPrincipal extends StatefulWidget {
   final int usuarioId;
@@ -16,9 +17,10 @@ class MenuPrincipal extends StatefulWidget {
 
   static const int menuInicio = 0;
   static const int menuActualizarCredenciales = 1;
-  static const int menuConfiguracion = 2;
-  static const int menuUsuarios = 3;
-  static const int menuAcercaDe = 4;
+  static const int menuCategorias = 2;
+  static const int menuConfiguracion = 3;
+  static const int menuUsuarios = 4;
+  static const int menuAcercaDe = 5;
 
   const MenuPrincipal({
     super.key,
@@ -169,6 +171,13 @@ class _MenuPrincipalState extends State<MenuPrincipal> with WidgetsBindingObserv
                 onTap: () => _seleccionarMenu(drawerContext, MenuPrincipal.menuActualizarCredenciales),
               ),
 
+              if (widget.rolId == 1)
+                ListTile(
+                  leading: Icon(Icons.category),
+                  title: Text('Categorias', style: TextStyle(fontSize: 14)),
+                  onTap: () => _seleccionarMenu(drawerContext, MenuPrincipal.menuCategorias),
+                ),
+
               if (!_esRolUsuario)
                 ListTile(
                   leading: Icon(Icons.people),
@@ -236,6 +245,9 @@ class _MenuPrincipalState extends State<MenuPrincipal> with WidgetsBindingObserv
       case MenuPrincipal.menuActualizarCredenciales:
         return CredencialesScreen(rolId: widget.rolId);
 
+      case MenuPrincipal.menuCategorias:
+        return CategoriasScreen();
+
       case MenuPrincipal.menuConfiguracion:
         // TODO: Reemplazar con pantalla real de configuración. Por ahora se muestra Inicio
         return InicioScreen();
@@ -257,6 +269,9 @@ class _MenuPrincipalState extends State<MenuPrincipal> with WidgetsBindingObserv
         return "Inicio";
       case MenuPrincipal.menuActualizarCredenciales:
         return "Actualizar Credenciales";
+      case MenuPrincipal.menuCategorias:
+        return "Categorías";
+
       case MenuPrincipal.menuConfiguracion:
         return "Configuración";
       case MenuPrincipal.menuUsuarios:
@@ -275,6 +290,9 @@ class _MenuPrincipalState extends State<MenuPrincipal> with WidgetsBindingObserv
 
       case MenuPrincipal.menuActualizarCredenciales:
         return Icons.update;
+
+      case MenuPrincipal.menuCategorias:
+        return Icons.category;
 
       case MenuPrincipal.menuConfiguracion:
         return Icons.settings;

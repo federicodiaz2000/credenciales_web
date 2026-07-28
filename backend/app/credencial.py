@@ -12,6 +12,7 @@ class Credencial:
             CREATE TABLE IF NOT EXISTS credencial (
                 credencial_id INTEGER PRIMARY KEY,
                 descripcion   VARCHAR(255),
+                categoria_id  INTEGER REFERENCES categoria(id),
                 usuario       VARCHAR(255),
                 password      VARCHAR(255),
                 notas         VARCHAR(2000),
@@ -19,6 +20,7 @@ class Credencial:
             );
             """
         )
+        # Nota: la FK hacia categoria(id) se declara directamente en la sentencia CREATE TABLE
 
     @staticmethod
     def _to_text(value: Any) -> str | None:
@@ -117,6 +119,7 @@ class Credencial:
         conn: Any,
         credencial_id: int,
         descripcion: str | None,
+        categoria_id: int | None,
         usuario: str | None,
         password: str | None,
         notas: str | None,
@@ -125,12 +128,14 @@ class Credencial:
             """
             INSERT INTO credencial (
                 credencial_id, descripcion, usuario, password, notas
-            ) VALUES (%s, %s, %s, %s, %s)
+                , categoria_id
+            ) VALUES (%s, %s, %s, %s, %s, %s)
             ON CONFLICT (credencial_id) DO UPDATE SET
                 descripcion = EXCLUDED.descripcion,
                 usuario = EXCLUDED.usuario,
                 password = EXCLUDED.password,
-                notas = EXCLUDED.notas
+                notas = EXCLUDED.notas,
+                categoria_id = EXCLUDED.categoria_id
             """,
             [
                 credencial_id,
@@ -138,6 +143,7 @@ class Credencial:
                 Credencial._to_text(usuario),
                 Credencial._to_text(password),
                 Credencial._to_text(notas),
+                Credencial._to_int(categoria_id),
             ],
         )
 
@@ -146,6 +152,7 @@ class Credencial:
         conn: Any,
         credencial_id: int,
         descripcion: str | None,
+        categoria_id: int | None,
         usuario: str | None,
         password: str | None,
         notas: str | None,
@@ -154,6 +161,7 @@ class Credencial:
             """
             UPDATE credencial SET
                 descripcion = %s,
+                categoria_id = %s,
                 usuario = %s,
                 password = %s,
                 notas = %s
@@ -161,6 +169,7 @@ class Credencial:
             """,
             [
                 Credencial._to_text(descripcion),
+                Credencial._to_int(categoria_id),
                 Credencial._to_text(usuario),
                 Credencial._to_text(password),
                 Credencial._to_text(notas),
@@ -176,6 +185,8 @@ class Credencial:
         sql = """
         SELECT
             c.credencial_id   AS credencial_id,
+            c.categoria_id    AS categoria_id,
+            cat.nombre        AS categoria_nombre,
             c.descripcion     AS descripcion,
             c.usuario         AS usuario,
             c.password        AS password,
@@ -183,6 +194,7 @@ class Credencial:
             c.created_at      AS created_at
         FROM
             credencial c
+        LEFT JOIN categoria cat ON c.categoria_id = cat.id
         """
 
         where_clauses: list[str] = []
@@ -192,6 +204,11 @@ class Credencial:
         if credencial_id is not None:
             where_clauses.append("c.credencial_id = %s")
             params.append(credencial_id)
+
+        categoria_id = Credencial._to_int(filtros.get("categoria_id"))
+        if categoria_id is not None:
+            where_clauses.append("c.categoria_id = %s")
+            params.append(categoria_id)
 
         descripcion = Credencial._to_text(filtros.get("descripcion"))
         if descripcion is not None:
@@ -217,6 +234,8 @@ class Credencial:
             """
             SELECT
                 c.credencial_id AS credencial_id,
+                c.categoria_id  AS categoria_id,
+                cat.nombre      AS categoria_nombre,
                 c.descripcion   AS descripcion,
                 c.usuario       AS usuario,
                 c.password      AS password,
@@ -224,6 +243,7 @@ class Credencial:
                 c.created_at    AS created_at
             FROM
                 credencial c
+            LEFT JOIN categoria cat ON c.categoria_id = cat.id
             WHERE
                 c.credencial_id = %s
             """,

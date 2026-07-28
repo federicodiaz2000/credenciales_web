@@ -22,6 +22,11 @@ except ImportError:  # Compatibilidad al ejecutar como script: python app/main.p
     from rol import Rol
 
 try:
+    from app.categoria import Categoria
+except ImportError:
+    from categoria import Categoria
+
+try:
     from app.usuario import Usuario
 except ImportError:  # Compatibilidad al ejecutar como script: python app/main.py
     from usuario import Usuario
@@ -81,6 +86,7 @@ class CredencialAgregarRequest(BaseModel):
     usuario: Optional[str] = Field(default=None, description="Usuario asociado a la credencial")
     password: Optional[str] = Field(default=None, description="Password de la credencial")
     notas: Optional[str] = Field(default=None, description="Notas adicionales")
+    categoriaId: Optional[int] = Field(default=None, description="ID de la categoría")
 
 
 class CredencialModificarRequest(BaseModel):
@@ -88,6 +94,7 @@ class CredencialModificarRequest(BaseModel):
     usuario: Optional[str] = Field(default=None, description="Usuario asociado a la credencial")
     password: Optional[str] = Field(default=None, description="Password de la credencial")
     notas: Optional[str] = Field(default=None, description="Notas adicionales")
+    categoriaId: Optional[int] = Field(default=None, description="ID de la categoría")
 
 
 class UsuarioAgregarRequest(BaseModel):
@@ -102,6 +109,14 @@ class UsuarioModificarRequest(BaseModel):
     email: str = Field(..., description="Email")
     rolId: int = Field(..., description="ID del rol")
     activo: bool = Field(default=True, description="Indica si el usuario esta activo")
+
+
+class CategoriaAgregarRequest(BaseModel):
+    nombre: str = Field(..., description="Nombre de la categoria")
+
+
+class CategoriaModificarRequest(BaseModel):
+    nombre: str = Field(..., description="Nombre de la categoria")
 
 
 def require_api_key(x_api_key: Optional[str] = Header(default=None, alias="X-API-Key")) -> None:
@@ -260,6 +275,38 @@ def listaRol(_: None = Depends(require_sesion_activa)) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail=f"Database error: {exc}") from exc
 
 
+@app.post("/crearTablaCategoria")
+def crearTablaCategoria(_: None = Depends(require_api_key)) -> dict[str, str]:
+    try:
+        with get_conn() as conn:
+            Categoria.crearTabla(conn)
+            conn.commit()
+            return {"message": "Tabla categoria creada correctamente"}
+    except psycopg.Error as exc:
+        raise HTTPException(status_code=400, detail=f"Database error: {exc}") from exc
+
+
+@app.post("/agregarDatosPorDefectoCategoria")
+def agregarDatosPorDefectoCategoria(_: None = Depends(require_api_key)) -> dict[str, str]:
+    try:
+        with get_conn() as conn:
+            Categoria.agregarDatosPorDefecto(conn)
+            conn.commit()
+            return {"message": "Datos por defecto de categoria agregados correctamente"}
+    except psycopg.Error as exc:
+        raise HTTPException(status_code=400, detail=f"Database error: {exc}") from exc
+
+
+@app.get("/listaCategoria")
+def listaCategoria(_: None = Depends(require_sesion_activa)) -> dict[str, Any]:
+    try:
+        with get_conn() as conn:
+            rows = Categoria.lista(conn)
+            return {"rows": rows, "count": len(rows)}
+    except psycopg.Error as exc:
+        raise HTTPException(status_code=400, detail=f"Database error: {exc}") from exc
+
+
 @app.post("/crearTablaUsuario")
 def crearTablaUsuario(_: None = Depends(require_api_key)) -> dict[str, str]:
     try:
@@ -288,6 +335,7 @@ def listaCredencial(
     descripcion: Optional[str] = Query(default=None, description="Texto para buscar en descripcion"),
     usuario: Optional[str] = Query(default=None, description="Texto para buscar en usuario"),
     notas: Optional[str] = Query(default=None, description="Texto para buscar en notas"),
+    categoria_id: Optional[int] = Query(default=None, description="ID de la categoría"),
     _: None = Depends(require_sesion_activa),
 ) -> dict[str, Any]:
     try:
@@ -297,11 +345,14 @@ def listaCredencial(
                 "descripcion": descripcion,
                 "usuario": usuario,
                 "notas": notas,
+                "categoria_id": categoria_id,
             }
             rows = Credencial.lista(conn, filtros)
             # `Credencial.lista` ya devuelve filas con claves: credencial_id, descripcion, usuario, password, notas, created_at
             # Serializar tipos no JSON-nativos (por ejemplo datetime) a cadenas.
             for r in rows:
+                if "categoria_nombre" not in r:
+                    r["categoria_nombre"] = None
                 for k, v in list(r.items()):
                     if hasattr(v, "isoformat"):
                         r[k] = v.isoformat()
@@ -343,6 +394,7 @@ def consultaCredenciales(
     descripcion: Optional[str] = Query(default=None, description="Texto para buscar en descripcion"),
     usuario: Optional[str] = Query(default=None, description="Texto para buscar en usuario"),
     notas: Optional[str] = Query(default=None, description="Texto para buscar en notas"),
+    categoria_id: Optional[int] = Query(default=None, description="ID de la categoría"),
 ) -> dict[str, Any]:
     try:
         with get_conn() as conn:
@@ -351,9 +403,12 @@ def consultaCredenciales(
                 "descripcion": descripcion,
                 "usuario": usuario,
                 "notas": notas,
+                "categoria_id": categoria_id,
             }
             rows = Credencial.lista(conn, filtros)
             for r in rows:
+                if "categoria_nombre" not in r:
+                    r["categoria_nombre"] = None
                 for k, v in list(r.items()):
                     if hasattr(v, "isoformat"):
                         r[k] = v.isoformat()
@@ -391,6 +446,7 @@ def agregarCredencial(
                 conn,
                 credencial_id=request.credencial_id,
                 descripcion=request.descripcion,
+                categoria_id=request.categoriaId,
                 usuario=request.usuario,
                 password=request.password,
                 notas=request.notas,
@@ -416,6 +472,7 @@ def modificarCredencial(
                 conn,
                 credencial_id=credencial_id,
                 descripcion=request.descripcion,
+                categoria_id=request.categoriaId,
                 usuario=request.usuario,
                 password=request.password,
                 notas=request.notas,
@@ -452,6 +509,49 @@ def agregarUsuario(
             Usuario.agregar(conn, request.nombre, request.email, request.rolId, request.activo)
             conn.commit()
             return {"message": "Usuario agregado correctamente"}
+    except psycopg.Error as exc:
+        raise HTTPException(status_code=400, detail=f"Database error: {exc}") from exc
+
+
+@app.post("/categorias")
+def agregarCategoria(
+    request: CategoriaAgregarRequest,
+    _: None = Depends(require_sesion_activa),
+) -> dict[str, str]:
+    try:
+        with get_conn() as conn:
+            Categoria.agregar(conn, request.nombre)
+            conn.commit()
+            return {"message": "Categoria agregada correctamente"}
+    except psycopg.Error as exc:
+        raise HTTPException(status_code=400, detail=f"Database error: {exc}") from exc
+
+
+@app.patch("/categorias/{categoriaId}")
+def modificarCategoria(
+    categoriaId: int,
+    request: CategoriaModificarRequest,
+    _: None = Depends(require_sesion_activa),
+) -> dict[str, str]:
+    try:
+        with get_conn() as conn:
+            Categoria.modificar(conn, categoriaId, request.nombre)
+            conn.commit()
+            return {"message": "Categoria modificada correctamente"}
+    except psycopg.Error as exc:
+        raise HTTPException(status_code=400, detail=f"Database error: {exc}") from exc
+
+
+@app.delete("/categorias/{categoriaId}")
+def eliminarCategoria(
+    categoriaId: int,
+    _: None = Depends(require_sesion_activa),
+) -> dict[str, str]:
+    try:
+        with get_conn() as conn:
+            Categoria.eliminar(conn, categoriaId)
+            conn.commit()
+            return {"message": "Categoria eliminada correctamente"}
     except psycopg.Error as exc:
         raise HTTPException(status_code=400, detail=f"Database error: {exc}") from exc
 
