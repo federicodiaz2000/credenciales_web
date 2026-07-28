@@ -7,8 +7,18 @@ class CredencialesConsulta {
   String? usuario;
   String? password;
   String? notas;
+  int? categoriaId;
+  String? categoriaNombre;
 
-  CredencialesConsulta({this.credencialId, this.descripcion, this.usuario, this.password, this.notas});
+  CredencialesConsulta({
+    this.credencialId,
+    this.descripcion,
+    this.usuario,
+    this.password,
+    this.notas,
+    this.categoriaId,
+    this.categoriaNombre,
+  });
 
   factory CredencialesConsulta.fromJson(Map<String, dynamic> json) {
     int parseInt(dynamic value) {
@@ -23,6 +33,10 @@ class CredencialesConsulta {
       usuario: json['usuario']?.toString(),
       password: json['password']?.toString(),
       notas: json['notas']?.toString(),
+      categoriaId: json['categoria_id'] != null
+          ? (json['categoria_id'] is int ? json['categoria_id'] as int : int.parse(json['categoria_id'].toString()))
+          : null,
+      categoriaNombre: json['categoria_nombre']?.toString(),
     );
   }
 
@@ -33,6 +47,8 @@ class CredencialesConsulta {
     if (usuario != null) data['usuario'] = usuario;
     if (password != null) data['password'] = password;
     if (notas != null) data['notas'] = notas;
+    if (categoriaId != null) data['categoria_id'] = categoriaId;
+    if (categoriaNombre != null) data['categoria_nombre'] = categoriaNombre;
     return data;
   }
 
@@ -41,6 +57,7 @@ class CredencialesConsulta {
     String? descripcion,
     String? usuario,
     String? notas,
+    int? categoriaId,
   }) async {
     final db = DatabaseAccess();
     final credencialAccess = CredencialAccess(databaseAccess: db);
@@ -50,6 +67,7 @@ class CredencialesConsulta {
       descripcion: descripcion,
       usuario: usuario,
       notas: notas,
+      categoriaId: categoriaId,
     );
 
     return credencialesDb.map((item) => CredencialesConsulta.fromJson(item)).toList();

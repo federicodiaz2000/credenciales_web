@@ -1,3 +1,4 @@
+import 'package:credenciales_web/db/categoria_access.dart';
 import 'package:http/http.dart' as http;
 import 'package:credenciales_web/db/credencial_access.dart';
 import 'package:credenciales_web/db/rol_access.dart';
@@ -41,15 +42,17 @@ class DatabaseAccess {
     final rolAccess = RolAccess(databaseAccess: db);
     final usuarioAccess = UsuarioAccess(databaseAccess: db);
     final usuarioLoginAccess = UsuarioLoginAccess(databaseAccess: db);
+    final categoriaAccess = CategoriaAccess(databaseAccess: db);
     final credencialAccess = CredencialAccess(databaseAccess: db);
 
     await rolAccess.crearTablaRolApi();
     await usuarioAccess.crearTablaUsuarioApi();
     await usuarioLoginAccess.crearTablaUsuarioLoginApi();
+    await categoriaAccess.crearTablaCategoriaApi();
     await credencialAccess.crearTablaCredencialApi();
 
     await rolAccess.agregarDatosPorDefectoRolApi();
     await usuarioAccess.agregarDatosPorDefectoUsuarioApi();
-    // departamento defaults removed
+    await categoriaAccess.agregarDatosPorDefectoCategoriaApi();
   }
 }

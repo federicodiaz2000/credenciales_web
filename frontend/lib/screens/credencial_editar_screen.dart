@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:credenciales_web/classes/credencial.dart';
+import 'package:credenciales_web/db/categoria_access.dart';
+import 'package:credenciales_web/db/database_access.dart';
 
 /// Pantalla para agregar o editar una credencial simple.
 class CredencialEditarScreen extends StatefulWidget {
@@ -26,6 +28,8 @@ class _CredencialEditarScreenState extends State<CredencialEditarScreen> {
   final _ctrlUsuario = TextEditingController();
   final _ctrlPassword = TextEditingController();
   final _ctrlNotas = TextEditingController();
+  List<Map<String, dynamic>> _categorias = [];
+  int? _selectedCategoriaId;
 
   @override
   void initState() {
@@ -34,6 +38,21 @@ class _CredencialEditarScreenState extends State<CredencialEditarScreen> {
       _sugerirCodigo();
     } else {
       _cargar();
+    }
+    _cargarCategorias();
+  }
+
+  Future<void> _cargarCategorias() async {
+    try {
+      final db = DatabaseAccess();
+      final catAccess = CategoriaAccess(databaseAccess: db);
+      final lista = await catAccess.listaCategoriaApi();
+      if (!mounted) return;
+      setState(() {
+        _categorias = lista;
+      });
+    } catch (_) {
+      // ignorar error, lista vacía
     }
   }
 
@@ -77,6 +96,7 @@ class _CredencialEditarScreenState extends State<CredencialEditarScreen> {
       _ctrlUsuario.text = entidad.usuario ?? '';
       _ctrlPassword.text = entidad.password ?? '';
       _ctrlNotas.text = entidad.notas ?? '';
+      _selectedCategoriaId = entidad.categoriaId;
       setState(() => _loading = false);
     } catch (e) {
       if (!mounted) return;
@@ -103,6 +123,7 @@ class _CredencialEditarScreenState extends State<CredencialEditarScreen> {
         await Credencial.agregar(
           credencialId: codigo,
           descripcion: descripcion,
+          categoriaId: _selectedCategoriaId,
           usuario: usuario,
           password: password,
           notas: notas,
@@ -111,6 +132,7 @@ class _CredencialEditarScreenState extends State<CredencialEditarScreen> {
         await Credencial.modificar(
           credencialId: codigo,
           descripcion: descripcion,
+          categoriaId: _selectedCategoriaId,
           usuario: usuario,
           password: password,
           notas: notas,
@@ -201,6 +223,27 @@ class _CredencialEditarScreenState extends State<CredencialEditarScreen> {
                     maxLength: 10,
                   ),
                   _campo(label: 'Descripción', controller: _ctrlDescripcion, maxLength: 255),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: DropdownButtonFormField<int?>(
+                      initialValue: _selectedCategoriaId,
+                      decoration: const InputDecoration(
+                        labelText: 'Categoría',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items: [
+                        const DropdownMenuItem<int?>(value: null, child: Text('Sin categoría')),
+                        ..._categorias.map(
+                          (c) => DropdownMenuItem<int?>(
+                            value: c['id'] is int ? c['id'] as int : int.parse(c['id'].toString()),
+                            child: Text(c['nombre']?.toString() ?? ''),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) => setState(() => _selectedCategoriaId = v),
+                    ),
+                  ),
                   _campo(label: 'Usuario', controller: _ctrlUsuario, maxLength: 255),
                   _campo(label: 'Password', controller: _ctrlPassword, maxLength: 255),
                 ],
