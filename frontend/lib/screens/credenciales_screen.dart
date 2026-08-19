@@ -19,109 +19,69 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
   bool _loading = false;
   List<CredencialesConsulta> _credenciales = [];
   String? _filtroDescripcion;
-  String? _filtroUsuario;
   String? _filtroNotas;
   int? _filtroCategoria;
 
-  @override
-  void initState() {
-    super.initState();
-    _cargarCredenciales();
-  }
-
-  Future<bool> _confirmDelete(BuildContext context, int? credencialId) async {
-    if (credencialId == null) return false;
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmar eliminación'),
-        content: Text('¿Desea eliminar la credencial $credencialId?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Eliminar')),
-        ],
-      ),
-    );
-    return confirmar == true;
-  }
-
-  Future<void> _cargarCredenciales() async {
-    setState(() {
-      _loading = true;
-    });
-
-    try {
-      // Pedimos al backend la búsqueda por `descripcion`, `usuario` y `notas`.
-      // `notas` se trata como texto normal y el filtrado lo aplica el backend.
-      // Debug: mostrar filtros usados
-      // ignore: avoid_print
-      print(
-        'Cargar credenciales con filtros: descripcion=$_filtroDescripcion usuario=$_filtroUsuario notas=$_filtroNotas categoria=$_filtroCategoria',
-      );
-      final credenciales = await CredencialesConsulta.lista(
-        descripcion: _filtroDescripcion,
-        usuario: _filtroUsuario,
-        notas: _filtroNotas,
-        categoriaId: _filtroCategoria,
-      );
-      if (!mounted) return;
-
-      setState(() {
-        _credenciales = credenciales;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al cargar credenciales: $e')));
-    } finally {
-      // ignore: control_flow_in_finally
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-      });
-    }
-  }
+  String? _filtroUsuario;
 
   int get _cantidadFiltrosActivos {
-    var count = 0;
-    final values = [_filtroDescripcion, _filtroUsuario, _filtroNotas];
-    for (final value in values) {
-      if (value == null) continue;
-      if (value.trim().isEmpty) continue;
-      count++;
-    }
-    if (_filtroCategoria != null) count++;
-    return count;
+    var c = 0;
+    if ((_filtroDescripcion ?? '').isNotEmpty) c++;
+    if ((_filtroUsuario ?? '').isNotEmpty) c++;
+    if ((_filtroNotas ?? '').isNotEmpty) c++;
+    if (_filtroCategoria != null) c++;
+    return c;
   }
 
   String get _textoCantidadFiltros {
-    if (_cantidadFiltrosActivos == 1) {
-      return '1 filtro';
-    }
-    return '$_cantidadFiltrosActivos filtros';
+    final parts = <String>[];
+    if ((_filtroDescripcion ?? '').isNotEmpty) parts.add('Descripción');
+    if ((_filtroUsuario ?? '').isNotEmpty) parts.add('Usuario');
+    if ((_filtroNotas ?? '').isNotEmpty) parts.add('Notas');
+    if (_filtroCategoria != null) parts.add('Categoría');
+    return parts.join(', ');
   }
 
-  String? _textoONull(String text) {
-    final trimmed = text.trim();
-    return trimmed.isEmpty ? null : trimmed;
-  }
-
-  Future<void> _abrirFiltros() async {
-    final filtros = await showDialog<_CredencialesFiltrosResultado?>(
-      context: context,
-      builder: (context) => _CredencialesFiltrosDialog(
+  Future<void> _cargarCredenciales() async {
+    setState(() => _loading = true);
+    try {
+      final lista = await CredencialesConsulta.lista(
         descripcion: _filtroDescripcion,
         usuario: _filtroUsuario,
         notas: _filtroNotas,
         categoriaId: _filtroCategoria,
-        textoONull: _textoONull,
+      );
+      if (!mounted) return;
+      setState(() {
+        _credenciales = lista;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _credenciales = [];
+      });
+      // ignore: avoid_print
+      print('Error cargando credenciales: $e');
+    } finally {
+      // ignore: control_flow_in_finally
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _abrirFiltros() async {
+    final resultado = await showDialog<_CredencialesFiltrosResultado?>(
+      context: context,
+      builder: (_) => _CredencialesFiltrosDialog(
+        descripcion: _filtroDescripcion,
+        usuario: _filtroUsuario,
+        notas: _filtroNotas,
+        categoriaId: _filtroCategoria,
+        textoONull: (text) => text.trim().isEmpty ? null : text.trim(),
       ),
     );
-
-    if (filtros == null || !mounted) {
-      return;
-    }
-
-    if (filtros.limpiar) {
+    if (resultado == null) return;
+    if (resultado.limpiar) {
       setState(() {
         _filtroDescripcion = null;
         _filtroUsuario = null;
@@ -131,23 +91,44 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
       await _cargarCredenciales();
       return;
     }
-
     setState(() {
-      _filtroDescripcion = filtros.descripcion;
-      _filtroUsuario = filtros.usuario;
-      _filtroNotas = filtros.notas;
-      _filtroCategoria = filtros.categoriaId;
+      _filtroDescripcion = resultado.descripcion;
+      _filtroUsuario = resultado.usuario;
+      _filtroNotas = resultado.notas;
+      _filtroCategoria = resultado.categoriaId;
     });
     await _cargarCredenciales();
   }
 
+  Future<bool> _confirmDelete(BuildContext context, int? credencialId) async {
+    if (credencialId == null) return false;
+    final r = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Confirmar'),
+        content: Text('¿Confirma eliminar la credencial $credencialId?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')),
+          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Eliminar')),
+        ],
+      ),
+    );
+    return r == true;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarCredenciales();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Container(
-          color: const Color(0xFFF6F9FF),
-          child: Column(
+    return Scaffold(
+      body: Stack(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
@@ -204,16 +185,41 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
                                             dataRowMinHeight: isLandscape ? 54 : 46,
                                             dataRowMaxHeight: isLandscape ? 60 : 52,
                                             headingRowHeight: 42,
-                                            columns: const [
-                                              DataColumn(label: Text('Descripción')),
-                                              DataColumn(label: Text('Categoría')),
-                                              DataColumn(label: Text('Usuario')),
-                                              DataColumn(label: Text('Password')),
-                                              DataColumn(label: Text('Notas')),
-                                              DataColumn(label: Text('Acciones')),
+                                            headingRowColor: WidgetStateProperty.all(const Color(0xFFD0E8FF)),
+                                            headingTextStyle: const TextStyle(fontWeight: FontWeight.bold),
+                                            columns: [
+                                              DataColumn(
+                                                label: Text(
+                                                  'Descripción',
+                                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text('Categoría', style: TextStyle(fontWeight: FontWeight.bold)),
+                                              ),
+                                              DataColumn(
+                                                label: Text('Usuario', style: TextStyle(fontWeight: FontWeight.bold)),
+                                              ),
+                                              DataColumn(
+                                                label: Text('Password', style: TextStyle(fontWeight: FontWeight.bold)),
+                                              ),
+                                              // Columna separada para iconos de password (sin título)
+                                              const DataColumn(label: SizedBox.shrink()),
+                                              DataColumn(
+                                                label: Text('Notas', style: TextStyle(fontWeight: FontWeight.bold)),
+                                              ),
+                                              DataColumn(
+                                                label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.bold)),
+                                              ),
                                             ],
-                                            rows: _credenciales.map((credencial) {
+                                            rows: _credenciales.asMap().entries.map((entry) {
+                                              final idx = entry.key;
+                                              final credencial = entry.value;
+                                              final obscure = ValueNotifier<bool>(true);
                                               return DataRow(
+                                                color: WidgetStateProperty.all(
+                                                  idx % 2 == 1 ? const Color(0xFFEAF7EA) : Colors.transparent,
+                                                ),
                                                 cells: [
                                                   DataCell(Text(credencial.descripcion ?? '')),
                                                   DataCell(Text(credencial.categoriaNombre ?? '')),
@@ -222,53 +228,68 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
                                                     Builder(
                                                       builder: (context) {
                                                         final pwd = credencial.password ?? '';
-                                                        final obscure = ValueNotifier<bool>(true);
                                                         String masked() =>
                                                             pwd.isEmpty ? '' : List.filled(pwd.length, '•').join();
                                                         return ValueListenableBuilder<bool>(
                                                           valueListenable: obscure,
                                                           builder: (context, isObscure, _) {
-                                                            return Row(
-                                                              mainAxisSize: MainAxisSize.min,
-                                                              children: [
-                                                                Flexible(child: Text(isObscure ? masked() : pwd)),
-                                                                IconButton(
-                                                                  tooltip: 'Copiar password',
-                                                                  icon: const Icon(Icons.copy, size: 18),
-                                                                  onPressed: () {
-                                                                    if (pwd.isEmpty) {
-                                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                                        const SnackBar(
-                                                                          content: Text('No hay password para copiar'),
-                                                                        ),
-                                                                      );
-                                                                      return;
-                                                                    }
-                                                                    Clipboard.setData(ClipboardData(text: pwd));
-                                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                                      const SnackBar(
-                                                                        content: Text(
-                                                                          'Password copiado al portapapeles',
-                                                                        ),
-                                                                      ),
-                                                                    );
-                                                                  },
-                                                                ),
-                                                                IconButton(
-                                                                  tooltip: isObscure
-                                                                      ? 'Mostrar password'
-                                                                      : 'Ocultar password',
-                                                                  icon: Icon(
-                                                                    isObscure ? Icons.visibility : Icons.visibility_off,
-                                                                    size: 18,
-                                                                  ),
-                                                                  onPressed: () => obscure.value = !obscure.value,
-                                                                ),
-                                                              ],
-                                                            );
+                                                            return Text(isObscure ? masked() : pwd);
                                                           },
                                                         );
                                                       },
+                                                    ),
+                                                  ),
+                                                  // Celda separada para los iconos de password
+                                                  DataCell(
+                                                    SizedBox(
+                                                      width: 72,
+                                                      child: Builder(
+                                                        builder: (context) {
+                                                          final pwd = credencial.password ?? '';
+                                                          if (pwd.isEmpty) return const SizedBox.shrink();
+                                                          return Row(
+                                                            mainAxisAlignment: MainAxisAlignment.end,
+                                                            mainAxisSize: MainAxisSize.min,
+                                                            children: [
+                                                              IconButton(
+                                                                padding: const EdgeInsets.all(4),
+                                                                constraints: const BoxConstraints(
+                                                                  minWidth: 28,
+                                                                  minHeight: 28,
+                                                                ),
+                                                                tooltip: 'Copiar password',
+                                                                icon: const Icon(Icons.copy, size: 18),
+                                                                onPressed: () {
+                                                                  Clipboard.setData(ClipboardData(text: pwd));
+                                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                                    const SnackBar(
+                                                                      content: Text('Password copiado al portapapeles'),
+                                                                    ),
+                                                                  );
+                                                                },
+                                                              ),
+                                                              IconButton(
+                                                                padding: const EdgeInsets.all(4),
+                                                                constraints: const BoxConstraints(
+                                                                  minWidth: 28,
+                                                                  minHeight: 28,
+                                                                ),
+                                                                tooltip: 'Mostrar / Ocultar',
+                                                                icon: ValueListenableBuilder<bool>(
+                                                                  valueListenable: obscure,
+                                                                  builder: (_, isObscure, _) => Icon(
+                                                                    isObscure ? Icons.visibility : Icons.visibility_off,
+                                                                    size: 18,
+                                                                  ),
+                                                                ),
+                                                                onPressed: () {
+                                                                  obscure.value = !obscure.value;
+                                                                },
+                                                              ),
+                                                            ],
+                                                          );
+                                                        },
+                                                      ),
                                                     ),
                                                   ),
                                                   DataCell(Text(credencial.notas ?? '')),
@@ -355,18 +376,18 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
               ),
             ],
           ),
-        ),
-        Positioned(
-          right: 16,
-          bottom: 16,
-          child: FloatingActionButton.extended(
-            heroTag: 'credenciales-filtros-fab',
-            onPressed: _abrirFiltros,
-            icon: const Icon(Icons.tune),
-            label: Text(_cantidadFiltrosActivos > 0 ? 'Filtros ($_textoCantidadFiltros)' : 'Filtros'),
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: FloatingActionButton.extended(
+              heroTag: 'credenciales-filtros-fab',
+              onPressed: _abrirFiltros,
+              icon: const Icon(Icons.tune),
+              label: Text(_cantidadFiltrosActivos > 0 ? 'Filtros ($_textoCantidadFiltros)' : 'Filtros'),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
