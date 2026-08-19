@@ -2,6 +2,8 @@ import base64
 from datetime import date, datetime
 from io import BytesIO
 from typing import Any
+import csv
+from pathlib import Path
 
 
 class Credencial:
@@ -105,6 +107,153 @@ class Credencial:
         return dict(row)
 
     # importar removed
+
+    @staticmethod
+    def importarDesdeCsv(conn: Any, csv_path: str, overwrite: bool = False, wipe: bool = False) -> dict[str, int]:
+        """
+        Importa credenciales desde un archivo CSV.
+
+        csv_path: ruta al archivo CSV. Se esperan columnas (al menos):
+          - descripcion
+          - categoria (nombre de la categoria)
+          - usuario
+          - password
+          - notas
+          - credencial_id (opcional)
+
+        Comportamiento:
+          - Si `wipe` es True, elimina todas las credenciales antes de empezar.
+          - Para cada fila, se asegura de que exista la categoria por nombre (creandola si es necesario).
+          - Busca una credencial existente por `descripcion` (coincidencia insensible a mayúsculas/espacios).
+            - Si existe y `overwrite` es True -> actualiza con los datos del CSV.
+            - Si existe y `overwrite` es False -> la fila se salta (no se modifica).
+            - Si no existe -> inserta una nueva credencial con `credencial_id` tomado de la columna o del siguiente codigo.
+
+        Devuelve un dict con contadores: total, inserted, updated, skipped, categories_added.
+        """
+        path = Path(csv_path)
+        if not path.exists():
+            raise FileNotFoundError(f"CSV file not found: {csv_path}")
+
+        total = 0
+        inserted = 0
+        updated = 0
+        skipped = 0
+        categories_added = 0
+
+        # Opcional: borrar todo antes de importar
+        if wipe:
+            conn.execute("DELETE FROM credencial")
+
+        # Cache local de categorias por nombre (lower) -> id
+        cat_cache: dict[str, int] = {}
+
+        # precargar categorias existentes
+        cur = conn.execute("SELECT id, nombre FROM categoria")
+        for r in cur.fetchall():
+            name = (r["nombre"] or "").strip()
+            if name:
+                cat_cache[name.lower()] = int(r["id"])
+
+        with path.open(newline="", encoding="utf-8") as fh:
+            reader = csv.DictReader(fh)
+            for raw_row in reader:
+                total += 1
+                # Normalizar keys a minúsculas
+                row = {k.strip().lower(): (v.strip() if isinstance(v, str) else v) for k, v in raw_row.items()}
+
+                descripcion = row.get("descripcion")
+                if descripcion is None or str(descripcion).strip() == "":
+                    # ignorar filas sin descripcion
+                    skipped += 1
+                    continue
+                descripcion = str(descripcion).strip()
+
+                # Categoria: varias cabeceras posibles
+                categoria_nombre = None
+                for key in ("categoria", "categoria_nombre", "categoria nombre", "categoria-name"):
+                    if key in row and row.get(key):
+                        categoria_nombre = row.get(key)
+                        break
+                if categoria_nombre is not None:
+                    categoria_nombre = str(categoria_nombre).strip()
+
+                usuario = row.get("usuario")
+                password = row.get("password")
+                notas = row.get("notas")
+
+                # resolver categoria_id (crear si no existe)
+                categoria_id = None
+                if categoria_nombre:
+                    key = categoria_nombre.lower()
+                    if key in cat_cache:
+                        categoria_id = cat_cache[key]
+                    else:
+                        # crear nueva categoria y recuperar id
+                        conn.execute("INSERT INTO categoria (nombre) VALUES (%s)", [categoria_nombre])
+                        cur2 = conn.execute("SELECT id FROM categoria WHERE nombre = %s LIMIT 1", [categoria_nombre])
+                        row2 = cur2.fetchone()
+                        if row2:
+                            categoria_id = int(row2["id"])
+                            cat_cache[key] = categoria_id
+                            categories_added += 1
+
+                # intentar obtener credencial existente por descripcion (coincidencia exacta insensible a mayusculas)
+                cur3 = conn.execute(
+                    "SELECT credencial_id FROM credencial WHERE lower(trim(coalesce(descripcion,''))) = lower(trim(%s)) LIMIT 1",
+                    [descripcion],
+                )
+                found = cur3.fetchone()
+
+                # si la fila trae credencial_id explícito, usarlo como candidato
+                cred_id_field = row.get("credencial_id") or row.get("id")
+                cred_id_from_csv = None
+                if cred_id_field is not None and str(cred_id_field).strip() != "":
+                    try:
+                        cred_id_from_csv = int(float(str(cred_id_field)))
+                    except Exception:
+                        cred_id_from_csv = None
+
+                if found is not None:
+                    existing_id = int(found["credencial_id"])
+                    if overwrite:
+                        Credencial.modificar(
+                            conn,
+                            credencial_id=existing_id,
+                            descripcion=descripcion,
+                            categoria_id=categoria_id,
+                            usuario=usuario,
+                            password=password,
+                            notas=notas,
+                        )
+                        updated += 1
+                    else:
+                        skipped += 1
+                else:
+                    # insertar nueva credencial
+                    if cred_id_from_csv is not None:
+                        new_id = cred_id_from_csv
+                    else:
+                        new_id = Credencial.proximoCodigo(conn)
+
+                    Credencial.agregar(
+                        conn,
+                        credencial_id=new_id,
+                        descripcion=descripcion,
+                        categoria_id=categoria_id,
+                        usuario=usuario,
+                        password=password,
+                        notas=notas,
+                    )
+                    inserted += 1
+
+        return {
+            "total": total,
+            "inserted": inserted,
+            "updated": updated,
+            "skipped": skipped,
+            "categories_added": categories_added,
+        }
 
     
 

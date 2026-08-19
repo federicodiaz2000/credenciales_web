@@ -681,6 +681,27 @@ def obtenerCredencialesLoginUsuario(
         raise HTTPException(status_code=400, detail=f"Database error: {exc}") from exc
 
 
+
+@app.post("/importarCredenciales")
+def importarCredenciales(
+    overwrite: bool = Query(default=False, description="Si true, sobreescribe credenciales existentes"),
+    wipe: bool = Query(default=False, description="Si true, elimina todas las credenciales antes de importar"),
+    _: None = Depends(require_rol_admin),
+) -> dict[str, Any]:
+    try:
+        csv_path = BASE_DIR / "credenciales.csv"
+        if not csv_path.exists():
+            raise HTTPException(status_code=400, detail=f"CSV file not found: {csv_path}")
+        with get_conn() as conn:
+            result = Credencial.importarDesdeCsv(conn, str(csv_path), overwrite=overwrite, wipe=wipe)
+            conn.commit()
+            return {"message": "Import completed", **result}
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except psycopg.Error as exc:
+        raise HTTPException(status_code=400, detail=f"Database error: {exc}") from exc
+
+
 class UsuarioLoginIniciarRequest(BaseModel):
     usuario: str = Field(..., description="Nombre de usuario")
     password: str = Field(..., description="Password encriptado")
